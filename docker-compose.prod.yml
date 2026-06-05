@@ -56,6 +56,10 @@ services:
       UPLOAD_DIR: /app/storage/uploads
     networks:
       - mkt-net
+    # Publish ra localhost de Nginx tren host Ubuntu proxy vao duoc.
+    # Khong mo truc tiep public internet.
+    ports:
+      - "127.0.0.1:4000:4000"
     expose:
       - "4000"
     volumes:
@@ -77,6 +81,10 @@ services:
       NODE_ENV: production
     networks:
       - mkt-net
+    # Publish ra localhost de Nginx tren host Ubuntu proxy vao duoc.
+    # Khong mo truc tiep public internet.
+    ports:
+      - "127.0.0.1:3004:3004"
     expose:
       - "3004"
 
