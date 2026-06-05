@@ -1,0 +1,12 @@
+DATABASE_URL="postgresql://neondb_owner:npg_niezX9RfoN7g@ep-delicate-snow-aqh8hoyg-pooler.c-8.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require"
+JWT_ACCESS_SECRET=o5doOlzIn0AG7hEajESbh/vUCyWxyi8VDh4w84mPC52J4X4PUKb4ivcXgX1pJ5ut
+JWT_REFRESH_SECRET=Npa3Uh8QAL77ChC2Y8RTOg+787qEfJGrO99b3ac15YmRox5RzkSzncdmxUCMqVlB
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+COOKIE_SECRET=UJK6M/KK0TPzpzvQtvpukeb/tUg51YnfboMsF7jSzwQBk27tSczgObcCo8N8tKzc
+CORS_ORIGIN=https://daotao.nhansuchat.vn,http://daotao.nhansuchat.vn
+NEXT_PUBLIC_API_URL=
+NEXT_PUBLIC_SOCKET_URL=https://daotao.nhansuchat.vn
+UPLOAD_DIR=/home/wghk7piw6ajn/daotao.nhansuchat.vn/uploads
+NODE_ENV=production
+HOSTNAME=127.0.0.1

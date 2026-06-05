@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+!.env.production.example
+nginx/certbot
+backups

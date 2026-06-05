@@ -1,0 +1,584 @@
+// ==========================================
+// MKT Academy — Prisma schema (theo spec mục 7.3)
+// ==========================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============== ENUMS ==============
+
+enum UserRole {
+  LEARNER
+  MANAGER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+}
+
+enum JourneyStage {
+  ONBOARDING // GĐ1
+  PRACTICE   // GĐ2
+  GROWTH     // GĐ3
+  LEADER     // GĐ4
+}
+
+enum LessonStatus {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  SITUATION
+  MINI_GAME
+  BOSS_BATTLE
+}
+
+enum QuestionDifficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ExpAction {
+  LESSON_COMPLETED
+  QUIZ_CORRECT_ANSWER
+  COURSE_COMPLETED
+  DAILY_LOGIN_STREAK
+  TEAM_SUPPORT
+  BOSS_BATTLE_PASSED
+  AI_COACH_SESSION
+  MISSION_COMPLETED
+  ADMIN_ADJUSTMENT
+}
+
+enum LeaderboardType {
+  TOP_LEARNING
+  TOP_SALES
+  TOP_DILIGENT
+  TOP_SUPPORT
+  WEEKLY_WARRIOR
+}
+
+enum LeaderboardPeriod {
+  WEEKLY
+  MONTHLY
+  ALL_TIME
+}
+
+enum QuizAttemptStatus {
+  PENDING
+  PASSED
+  FAILED
+}
+
+enum CertificateType {
+  LEVEL
+  COURSE
+}
+
+enum CommentReactionType {
+  LIKE
+  HELPFUL
+  INSIGHTFUL
+}
+
+// ============== USERS & PROFILES ==============
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users   User[]
+  courses Course[]
+
+  @@map("departments")
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String     @map("password_hash")
+  name         String
+  role         UserRole   @default(LEARNER)
+  status       UserStatus @default(ACTIVE)
+  departmentId String?    @map("department_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  profile             Profile?
+  lessonProgress      LessonProgress[]
+  quizAttempts        QuizAttempt[]
+  expTransactions     ExpTransaction[]
+  userBadges          UserBadge[]
+  missionProgress     MissionProgress[]
+  leaderboardEntries  LeaderboardEntry[]
+  aiCoachSessions     AiCoachSession[]
+  comments            Comment[]
+  commentReactions    CommentReaction[]
+  certificates        Certificate[]
+
+  @@index([departmentId])
+  @@map("users")
+}
+
+model Profile {
+  userId       String       @id @map("user_id")
+  avatar       String?
+  levelId      String?      @map("level_id")
+  exp          Int          @default(0)
+  rank         Int?         // Thứ hạng leaderboard tổng (cập nhật định kỳ)
+  streakCount  Int          @default(0) @map("streak_count")
+  stage        JourneyStage @default(ONBOARDING)
+  lastActiveAt DateTime?    @map("last_active_at")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level Level? @relation(fields: [levelId], references: [id])
+
+  @@map("profiles")
+}
+
+// ============== HỆ THỐNG LEVEL ==============
+
+model Level {
+  id            String @id @default(cuid())
+  order         Int    @unique // 1..5
+  name          String // VD: "Tân Binh", "Thực Chiến", ...
+  expThreshold  Int    @map("exp_threshold")
+  description   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  profiles Profile[]
+  quizzes  Quiz[]
+
+  @@map("levels")
+}
+
+// ============== KHÓA HỌC ==============
+
+model Course {
+  id           String @id @default(cuid())
+  departmentId String @map("department_id")
+  title        String
+  description  String?
+  order        Int
+  unlockRule   Json?  @map("unlock_rule") // UnlockRule JSON (cấu hình mở khóa)
+  isPublished  Boolean @default(true) @map("is_published")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  modules    Module[]
+
+  @@index([departmentId])
+  @@map("courses")
+}
+
+model Module {
+  id          String @id @default(cuid())
+  courseId    String @map("course_id")
+  title       String
+  description String?
+  order       Int
+  unlockRule  Json?  @map("unlock_rule")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  course    Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+  questions Question[]
+  quizzes   Quiz[]
+
+  @@index([courseId])
+  @@map("modules")
+}
+
+model Lesson {
+  id        String @id @default(cuid())
+  moduleId  String @map("module_id")
+  title     String
+  content   String // Markdown / HTML
+  videoUrl  String? @map("video_url")
+  order     Int
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  module     Module           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress   LessonProgress[]
+  comments   Comment[]
+
+  @@index([moduleId])
+  @@map("lessons")
+}
+
+model LessonProgress {
+  id          String       @id @default(cuid())
+  userId      String       @map("user_id")
+  lessonId    String       @map("lesson_id")
+  status      LessonStatus @default(IN_PROGRESS)
+  completedAt DateTime?    @map("completed_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+  @@map("lesson_progress")
+}
+
+// ============== NGÂN HÀNG CÂU HỎI & BÀI THI ==============
+
+model Question {
+  id         String             @id @default(cuid())
+  type       QuestionType
+  content    String
+  // options: cấu trúc JSON tùy dạng câu hỏi
+  // - MULTIPLE_CHOICE: [{ key: "A", text: "..." }, ...]
+  // - MINI_GAME (kéo-thả): { items: [...], correctOrder: [...] }
+  options    Json?
+  // answer: đáp án đúng — JSON
+  answer     Json
+  difficulty QuestionDifficulty @default(MEDIUM)
+  moduleId   String?            @map("module_id")
+  isActive   Boolean            @default(true) @map("is_active")
+  createdAt  DateTime           @default(now()) @map("created_at")
+  updatedAt  DateTime           @updatedAt @map("updated_at")
+
+  module      Module?           @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  quizzes     QuizQuestion[]
+
+  @@index([moduleId])
+  @@index([type])
+  @@map("questions")
+}
+
+model Quiz {
+  id            String @id @default(cuid())
+  title         String
+  description   String?
+  moduleId      String? @map("module_id")
+  levelId       String? @map("level_id") // Bài thi cuối Level (Boss Battle)
+  passScore     Int    @map("pass_score")    // Điểm đạt
+  timeLimitSec  Int    @map("time_limit_sec") // Thời gian (giây)
+  maxAttempts   Int    @default(3) @map("max_attempts")
+  // Cấu hình rút đề: số câu mỗi loại, độ khó
+  questionPicker Json? @map("question_picker")
+  isActive      Boolean @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  module    Module?        @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  level     Level?         @relation(fields: [levelId], references: [id], onDelete: SetNull)
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@map("quizzes")
+}
+
+// Bảng nối Quiz - Question (khi Admin gán cứng câu hỏi vào bài thi)
+model QuizQuestion {
+  quizId     String @map("quiz_id")
+  questionId String @map("question_id")
+  order      Int
+
+  quiz     Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([quizId, questionId])
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id         String             @id @default(cuid())
+  userId     String             @map("user_id")
+  quizId     String             @map("quiz_id")
+  score      Int                @default(0)
+  passed     Boolean            @default(false)
+  status     QuizAttemptStatus  @default(PENDING)
+  // Dữ liệu chi tiết: câu trả lời từng câu, đúng/sai
+  answers    Json?
+  // Nhận xét AI (cho tình huống & Boss Battle)
+  aiFeedback Json?              @map("ai_feedback")
+  startedAt  DateTime           @default(now()) @map("started_at")
+  finishedAt DateTime?          @map("finished_at")
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([quizId])
+  @@map("quiz_attempts")
+}
+
+// ============== AUDIT LOG ==============
+// Ghi nhận mọi hành động nhạy cảm của Admin (adjustExp, forceUnlock, delete...)
+// để truy vết khi cần (spec mục 5.11 — Admin toàn quyền nhưng có log).
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String   @map("actor_id")
+  actorEmail String   @map("actor_email")
+  action     String   // VD: 'ADJUST_EXP', 'FORCE_UNLOCK', 'DELETE_COURSE', 'UPDATE_LEVEL'
+  targetType String?  @map("target_type") // 'USER', 'COURSE', 'LESSON'...
+  targetId   String?  @map("target_id")
+  before     Json?    // Snapshot trước thay đổi
+  after      Json?    // Snapshot sau
+  note       String?
+  ip         String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@map("audit_logs")
+}
+
+// ============== COACH SCENARIOS ==============
+// Kịch bản AI Coach do Admin tự nhập + cấu hình (spec 5.11 — Admin tự setup).
+// Thay thế hardcode trong file ai/coach-scenarios.ts.
+model CoachScenario {
+  id              String   @id // ID tự chọn: 'price-objection', 'angry-customer'...
+  name            String
+  description     String
+  icon            String   @default("🎯")
+  difficulty      String   @default("MEDIUM") // EASY/MEDIUM/HARD (lưu string để admin tự thêm)
+  systemPrompt    String   @map("system_prompt") // Persona prompt cho AI
+  initialMessage  String   @map("initial_message") // Tin nhắn mở đầu khách hàng
+  successCriteria Json     @map("success_criteria") // string[] — tiêu chí thành công
+  rewardExp       Int      @default(30) @map("reward_exp")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("coach_scenarios")
+}
+
+// ============== AI PROVIDER CONFIG ==============
+// Lưu cấu hình OpenAI do Admin nhập. API key được mã hóa ở backend,
+// frontend chỉ nhận trạng thái đã cấu hình/chưa cấu hình.
+model AiProviderConfig {
+  id                    String   @id @default("openai")
+  provider              String   @default("openai")
+  encryptedApiKey       String?  @map("encrypted_api_key")
+  encryptedGeminiApiKey String?  @map("encrypted_gemini_api_key")
+  model                 String   @default("gpt-4o-mini")
+  coachProvider         String   @default("gemini") @map("coach_provider")
+  coachModel            String   @default("gemini-2.5-flash") @map("coach_model")
+  gradingProvider       String   @default("openai") @map("grading_provider")
+  gradingModel          String   @default("gpt-4o-mini") @map("grading_model")
+  maxTokens             Int      @default(1500) @map("max_tokens")
+  dailyLimit            Int      @default(20) @map("daily_limit")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("ai_provider_configs")
+}
+
+// ============== EXP & GAMIFICATION ==============
+
+// Bảng quy đổi EXP — Admin cấu hình động cho từng ExpAction (spec mục 5.5 + 5.11).
+model ExpRule {
+  id          String    @id @default(cuid())
+  action      ExpAction @unique
+  amount      Int
+  enabled     Boolean   @default(true)
+  description String?
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("exp_rules")
+}
+
+model ExpTransaction {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  action    ExpAction
+  amount    Int
+  // Tham chiếu nguồn (lesson_id, quiz_id, mission_id...)
+  refType   String?   @map("ref_type")
+  refId     String?   @map("ref_id")
+  note      String?
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("exp_transactions")
+}
+
+model Badge {
+  id          String @id @default(cuid())
+  name        String
+  icon        String // tên icon / URL
+  description String
+  // rule: điều kiện đạt — JSON cấu hình được trong Admin
+  rule        Json
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  userBadges UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  userId   String   @map("user_id")
+  badgeId  String   @map("badge_id")
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Mission {
+  id        String @id @default(cuid())
+  title     String
+  description String?
+  rewardExp Int    @map("reward_exp")
+  // rule: định nghĩa hành động cần làm để hoàn thành (JSON)
+  rule      Json
+  isDaily   Boolean @default(true) @map("is_daily")
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  progress MissionProgress[]
+
+  @@map("missions")
+}
+
+model MissionProgress {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  missionId   String   @map("mission_id")
+  date        DateTime @db.Date // Ngày áp dụng nhiệm vụ
+  completed   Boolean  @default(false)
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, missionId, date])
+  @@index([userId, date])
+  @@map("mission_progress")
+}
+
+model LeaderboardEntry {
+  id        String            @id @default(cuid())
+  userId    String            @map("user_id")
+  boardType LeaderboardType   @map("board_type")
+  period    LeaderboardPeriod
+  // periodKey: định danh chu kỳ (VD "2026-W21", "2026-05", "ALL")
+  periodKey String            @map("period_key")
+  score     Int               @default(0)
+  rank      Int               @default(0)
+  updatedAt DateTime          @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardType, period, periodKey])
+  @@index([boardType, period, periodKey, rank])
+  @@map("leaderboard_entries")
+}
+
+// ============== AI COACH ==============
+
+model AiCoachSession {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  scenario  String   // VD: "khach_che_gia_cao"
+  // transcript: mảng AiCoachMessage[]
+  transcript Json
+  // score, feedback theo AiCoachFeedback
+  score     Int?
+  feedback  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  endedAt   DateTime? @map("ended_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("ai_coach_sessions")
+}
+
+// ============== SOCIAL LEARNING ==============
+
+model Comment {
+  id        String   @id @default(cuid())
+  lessonId  String   @map("lesson_id")
+  userId    String   @map("user_id")
+  content   String
+  parentId  String?  @map("parent_id")
+  isPinned  Boolean  @default(false) @map("is_pinned")
+  isHidden  Boolean  @default(false) @map("is_hidden")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lesson    Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   Comment[] @relation("CommentReplies")
+  reactions CommentReaction[]
+
+  @@index([lessonId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model CommentReaction {
+  commentId String              @map("comment_id")
+  userId    String              @map("user_id")
+  type      CommentReactionType
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([commentId, userId, type])
+  @@map("comment_reactions")
+}
+
+// ============== CHỨNG CHỈ ==============
+
+// Certificate dùng refId polymorphic: trỏ tới Level hoặc Course tùy `type`.
+// Không đặt FK cứng để giữ linh hoạt — kiểm tra ràng buộc ở tầng service.
+model Certificate {
+  id       String          @id @default(cuid())
+  userId   String          @map("user_id")
+  type     CertificateType
+  refId    String          @map("ref_id")
+  code     String          @unique
+  issuedAt DateTime        @default(now()) @map("issued_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type, refId])
+  @@map("certificates")
+}

@@ -1,0 +1,26 @@
+# Docker Compose dùng cho môi trường phát triển local
+# Chạy: docker compose up -d postgres
+# Tắt:  docker compose down
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mkt-academy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mkt_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mkt_password_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-mkt_academy}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mkt_admin} -d ${POSTGRES_DB:-mkt_academy}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+    name: mkt-academy-postgres-data
