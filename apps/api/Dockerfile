@@ -12,6 +12,7 @@ RUN apk add --no-cache openssl
 
 # Copy lockfile + workspace manifest trước để cache layer install
 COPY package.json package-lock.json* ./
+COPY tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/types/package.json ./packages/types/
 
