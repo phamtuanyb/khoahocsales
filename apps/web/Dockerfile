@@ -19,6 +19,7 @@ FROM node:20-alpine AS builder
 WORKDIR /repo
 
 COPY --from=deps /repo/node_modules ./node_modules
+COPY --from=deps /repo/tsconfig.base.json ./tsconfig.base.json
 COPY packages/types ./packages/types
 COPY apps/web ./apps/web
 
