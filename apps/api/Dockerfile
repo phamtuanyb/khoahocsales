@@ -22,6 +22,10 @@ RUN npm install --ignore-scripts
 COPY packages/types ./packages/types
 COPY apps/api ./apps/api
 
+# Build shared package trước để runtime trong container không phải load TS source
+WORKDIR /repo/packages/types
+RUN npm run build
+
 # Generate Prisma client + build NestJS
 WORKDIR /repo/apps/api
 RUN npx prisma generate
@@ -35,13 +39,14 @@ RUN apk add --no-cache openssl tini
 
 ENV NODE_ENV=production
 
-# Copy node_modules + dist + prisma từ builder
+# Workspace dùng node_modules hoist ở root, không có /apps/api/node_modules riêng.
+# Runtime của Nest vẫn resolve được dependency qua /app/node_modules.
 COPY --from=builder /repo/node_modules ./node_modules
-COPY --from=builder /repo/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /repo/apps/api/dist ./apps/api/dist
 COPY --from=builder /repo/apps/api/prisma ./apps/api/prisma
 COPY --from=builder /repo/apps/api/package.json ./apps/api/package.json
-COPY --from=builder /repo/packages ./packages
+COPY --from=builder /repo/packages/types/package.json ./packages/types/package.json
+COPY --from=builder /repo/packages/types/dist ./packages/types/dist
 
 WORKDIR /app/apps/api
 

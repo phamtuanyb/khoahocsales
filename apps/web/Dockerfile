@@ -24,9 +24,14 @@ COPY apps/web ./apps/web
 # Build-time public env vars phải truyền vào lúc build
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SOCKET_URL
+ARG NEXT_PUBLIC_BASE_PATH
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
+ENV NEXT_PUBLIC_BASE_PATH=$NEXT_PUBLIC_BASE_PATH
 ENV NEXT_TELEMETRY_DISABLED=1
+
+WORKDIR /repo/packages/types
+RUN npm run build
 
 WORKDIR /repo/apps/web
 RUN npm run build
@@ -47,7 +52,8 @@ COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/public ./public
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/package.json ./package.json
 COPY --from=builder --chown=nextjs:nodejs /repo/apps/web/next.config.mjs ./next.config.mjs
 COPY --from=builder --chown=nextjs:nodejs /repo/node_modules ./node_modules
-COPY --from=builder --chown=nextjs:nodejs /repo/packages ./packages
+COPY --from=builder --chown=nextjs:nodejs /repo/packages/types/package.json ./packages/types/package.json
+COPY --from=builder --chown=nextjs:nodejs /repo/packages/types/dist ./packages/types/dist
 
 USER nextjs
 EXPOSE 3004
