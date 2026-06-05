@@ -37,6 +37,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /repo/packages/types
 RUN npm run build
 
+WORKDIR /repo/apps/api
+RUN npx prisma generate
+
 WORKDIR /repo/apps/web
 RUN npm run build
 
