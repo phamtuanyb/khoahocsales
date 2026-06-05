@@ -10,6 +10,7 @@ WORKDIR /repo
 COPY package.json package-lock.json* ./
 COPY tsconfig.base.json ./
 COPY apps/web/package.json ./apps/web/
+COPY apps/api/package.json ./apps/api/
 COPY packages/types/package.json ./packages/types/
 
 RUN npm install --ignore-scripts
@@ -21,6 +22,7 @@ WORKDIR /repo
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=deps /repo/tsconfig.base.json ./tsconfig.base.json
 COPY packages/types ./packages/types
+COPY apps/api ./apps/api
 COPY apps/web ./apps/web
 
 # Build-time public env vars phải truyền vào lúc build
