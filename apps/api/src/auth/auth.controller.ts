@@ -17,10 +17,8 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import type { AuthenticatedUser } from './types/jwt-payload.interface';
 
-// Tên cookie httpOnly cho refresh token (risk #1 — chống XSS đọc token).
-// Access token vẫn trả qua body để FE đính kèm Bearer header.
 const REFRESH_COOKIE_NAME = 'mkt_refresh';
-const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 ngày
+const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Controller('auth')
 export class AuthController {
@@ -29,7 +27,6 @@ export class AuthController {
     private readonly config: ConfigService,
   ) {}
 
-  // POST /api/v1/auth/login — accessToken qua body + refreshToken qua httpOnly cookie.
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
@@ -39,11 +36,9 @@ export class AuthController {
   ) {
     const result = await this.authService.login(dto);
     this.setRefreshCookie(res, result.refreshToken);
-    // Backward-compat: vẫn trả refreshToken trong body để FE cũ dùng được.
     return result;
   }
 
-  // POST /api/v1/auth/refresh — ưu tiên đọc refresh từ cookie httpOnly, fallback body.
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
@@ -59,7 +54,6 @@ export class AuthController {
     return result;
   }
 
-  // POST /api/v1/auth/logout — xóa cookie refresh trên browser.
   @Public()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
@@ -68,13 +62,10 @@ export class AuthController {
     return { ok: true };
   }
 
-  // GET /api/v1/auth/me — yêu cầu JWT hợp lệ
   @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return this.authService.me(user.id);
   }
-
-  // ---- helpers ----
 
   private setRefreshCookie(res: Response, token: string): void {
     res.cookie(REFRESH_COOKIE_NAME, token, {
@@ -85,10 +76,16 @@ export class AuthController {
 
   private cookieOptions() {
     const isProd = this.config.get<string>('NODE_ENV') === 'production';
+    const cookieSecure = this.config.get<string>('COOKIE_SECURE');
+    const secure =
+      typeof cookieSecure === 'string'
+        ? cookieSecure.trim().toLowerCase() === 'true'
+        : isProd;
+
     return {
       httpOnly: true,
-      secure: isProd, // HTTPS only trên production
-      sameSite: isProd ? ('strict' as const) : ('lax' as const),
+      secure,
+      sameSite: secure ? ('strict' as const) : ('lax' as const),
       path: '/',
     };
   }
