@@ -149,7 +149,8 @@ docker compose -f docker-compose.vps.yml up -d --build
 
 ## 8. Ghi chu van hanh
 
-- khong dung `docker-compose.prod.yml` cho VPS nay neu ben ngoai da co Caddy/Nginx
+- `docker-compose.standalone.yml` la mo hinh standalone cu, tu xu ly nginx/certbot ben trong project
+- dung `docker-compose.vps.yml` cho VPS co Caddy/Nginx reverse proxy ben ngoai
 - khong can `nginx/conf.d/*` va `certbot` trong project cho kieu deploy nay
 - khong public port Postgres ra internet
 - neu doi domain, chi can sua `.env` roi rebuild lai `web`

@@ -232,6 +232,10 @@ linear-gradient(135deg, #0D47A1 0%, #1565C0 40%, #1E88E5 80%, #64B5F6 100%)
   - **Vercel**: connect repo, set `NEXT_PUBLIC_API_URL` trỏ về API prod
   - **Tự host**: `npm run start --workspace=@mkt-academy/web` (port 3004)
 
+### Deploy production
+- `docker-compose.vps.yml`: mo hinh VPS dung sau reverse proxy ngoai (Caddy/Nginx host)
+- `docker-compose.standalone.yml`: mo hinh standalone legacy, project tu xu ly `nginx` + `certbot`
+
 ### Bắt buộc thay khi production
 - `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` — random ≥ 32 ký tự
 - `OPENAI_API_KEY` — key thật

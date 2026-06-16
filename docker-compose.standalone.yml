@@ -1,6 +1,6 @@
 # =====================================================
 # MKT Academy — Production Docker Compose
-# Chạy: docker compose -f docker-compose.prod.yml up -d --build
+# Chay: docker compose -f docker-compose.standalone.yml up -d --build
 # =====================================================
 
 services:

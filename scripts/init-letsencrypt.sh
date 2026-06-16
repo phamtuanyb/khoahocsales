@@ -44,14 +44,14 @@ rm -f nginx/conf.d/app.http-only.conf.disabled
 
 # Bước 4: start nginx + web + api + postgres
 echo "[4/6] Khởi động services (nginx HTTP only) …"
-docker compose -f docker-compose.prod.yml up -d postgres api web nginx
+docker compose -f docker-compose.standalone.yml up -d postgres api web nginx
 
 # Đợi nginx
 sleep 5
 
 # Bước 5: xin cert từ Let's Encrypt
 echo "[5/6] Đang xin cert từ Let's Encrypt …"
-docker compose -f docker-compose.prod.yml run --rm --entrypoint "\
+docker compose -f docker-compose.standalone.yml run --rm --entrypoint "\
   certbot certonly --webroot -w /var/www/certbot \
   --email admin@$DOMAIN_NAME \
   -d $DOMAIN_NAME -d www.$DOMAIN_NAME \
@@ -65,8 +65,8 @@ if [ -f nginx/conf.d/app.conf.disabled ]; then
 fi
 sed -i "s/DOMAIN_NAME/$DOMAIN_NAME/g" nginx/conf.d/app.conf
 
-docker compose -f docker-compose.prod.yml exec nginx nginx -s reload || \
-  docker compose -f docker-compose.prod.yml restart nginx
+docker compose -f docker-compose.standalone.yml exec nginx nginx -s reload || \
+  docker compose -f docker-compose.standalone.yml restart nginx
 
 echo ""
 echo "✅ Xong! Truy cập: https://$DOMAIN_NAME"
