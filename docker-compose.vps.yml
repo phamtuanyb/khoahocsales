@@ -1,0 +1,99 @@
+# =====================================================
+# MKT Academy - VPS compose behind external reverse proxy
+# Dung cho mo hinh:
+# - Caddy/Nginx ben ngoai xu ly HTTPS va reverse proxy
+# - Docker chi chay postgres + api + web
+# - Web noi bo: 127.0.0.1:3004
+# - API noi bo: 127.0.0.1:4000
+# =====================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mkt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backups:/backups
+    networks:
+      - mkt-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    expose:
+      - "5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: mkt-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_PORT: 4000
+      API_HOST: 0.0.0.0
+      API_PUBLIC_HOST: https://${DOMAIN_NAME}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      COOKIE_SECRET: ${COOKIE_SECRET}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      AI_CONFIG_SECRET: ${AI_CONFIG_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_MAX_TOKENS: ${OPENAI_MAX_TOKENS:-1500}
+      OPENAI_DAILY_LIMIT_PER_USER: ${OPENAI_DAILY_LIMIT_PER_USER:-20}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      UPLOAD_DIR: /app/storage/uploads
+    networks:
+      - mkt-net
+    ports:
+      - "127.0.0.1:4000:4000"
+    expose:
+      - "4000"
+    volumes:
+      - uploads-data:/app/storage/uploads
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL}
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+    container_name: mkt-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      NODE_ENV: production
+    networks:
+      - mkt-net
+    ports:
+      - "127.0.0.1:3004:3004"
+    expose:
+      - "3004"
+
+networks:
+  mkt-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    name: mkt-academy-postgres-data
+  uploads-data:
+    name: mkt-academy-uploads-data
